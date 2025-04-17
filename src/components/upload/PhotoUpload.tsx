@@ -6,6 +6,8 @@ import { Camera, Upload, RefreshCw, Check } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useNavigate } from 'react-router-dom';
 
+const API_URL = "http://localhost:5000"; // Flask server URL
+
 const PhotoUpload = () => {
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -33,16 +35,38 @@ const PhotoUpload = () => {
     }
   };
 
-  const handleUpload = () => {
+  const handleUpload = async () => {
     if (!selectedPhoto) return;
     
     setIsLoading(true);
     
-    // Mock upload process
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      // Get selected garment from localStorage (temporary until we implement full API)
+      const selectedGarment = localStorage.getItem('selectedGarment');
       
-      // Store the photo in localStorage
+      // Create the payload for the API
+      const payload = {
+        userPhoto: selectedPhoto,
+        garment: selectedGarment
+      };
+      
+      // Send the photo to the Flask backend
+      const response = await fetch(`${API_URL}/api/upload-photo`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to upload photo');
+      }
+      
+      const data = await response.json();
+      
+      // For now, still store in localStorage for the tryon page to access
+      // In a full implementation, we would fetch this from the API in the TryOn component
       localStorage.setItem('userPhoto', selectedPhoto);
       
       toast({
@@ -51,7 +75,16 @@ const PhotoUpload = () => {
       });
       
       navigate('/try-on');
-    }, 2000);
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      toast({
+        title: "Upload failed",
+        description: "There was an error uploading your photo. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleRetake = () => {
@@ -115,7 +148,7 @@ const PhotoUpload = () => {
         )}
         
         <p className="mt-4 text-sm text-muted-foreground text-center">
-          Your photo will be used only for the virtual try-on and won't be saved on our servers
+          Your photo will be processed securely on our servers for the virtual try-on
         </p>
       </CardContent>
     </Card>
